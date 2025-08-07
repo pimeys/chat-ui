@@ -1,0 +1,149 @@
+# Nexus Configuration for AWS Bedrock Playground
+# This configuration includes all the Bedrock models tested in the integration tests
+#
+# To use this configuration:
+# 1. Ensure you have AWS credentials configured (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, or AWS_PROFILE)
+# 2. Set your AWS region if different from us-east-1
+# 3. Run: nexus -c nexus-bedrock-playground.toml
+# 4. Access the LLM endpoint at: http://localhost:9333/llm
+
+# Server configuration
+[server]
+listen_address = "127.0.0.1:8080"
+
+[server.health]
+enabled = true
+path = "/health"
+
+# LLM configuration
+[llm]
+enabled = true
+path = "/llm"
+
+# AWS Bedrock provider configuration
+[llm.providers.bedrock]
+type = "bedrock"
+region = "us-east-1"  # Change this to your preferred region
+profile = "sandbox"
+
+# ============================================================================
+# Amazon Titan Models
+# ============================================================================
+
+# Titan Text G1 - Lite - Lightweight text generation
+[llm.providers.bedrock.models.titan-lite]
+rename = "amazon.titan-text-lite-v1"
+
+# Titan Text G1 - Express - General purpose text generation
+[llm.providers.bedrock.models.titan-express]
+rename = "amazon.titan-text-express-v1"
+
+# ============================================================================
+# Amazon Nova Models
+# ============================================================================
+
+# Nova Micro - Smallest and fastest Nova model
+[llm.providers.bedrock.models.nova-micro]
+rename = "amazon.nova-micro-v1:0"
+
+# ============================================================================
+# Anthropic Claude Models
+# ============================================================================
+
+# Claude Instant - Fast, cost-effective model
+[llm.providers.bedrock.models.claude-instant]
+rename = "anthropic.claude-instant-v1"
+
+# Claude 3 Sonnet - Balanced performance and cost
+[llm.providers.bedrock.models.claude-3-sonnet]
+rename = "anthropic.claude-3-sonnet-20240229-v1:0"
+
+# Claude 3 Haiku - Fastest Claude 3 model, great for simple tasks
+[llm.providers.bedrock.models.claude-3-haiku]
+rename = "anthropic.claude-3-haiku-20240307-v1:0"
+
+# ============================================================================
+# Cohere Command Models
+# ============================================================================
+
+# Command R - Efficient RAG-optimized model
+[llm.providers.bedrock.models.command-r]
+rename = "cohere.command-r-v1:0"
+
+# ============================================================================
+# DeepSeek Models
+# ============================================================================
+
+# DeepSeek-R1 - Advanced reasoning model
+[llm.providers.bedrock.models.deepseek-r1]
+rename = "us.deepseek.r1-v1:0"
+
+# ============================================================================
+# Meta Llama Models
+# ============================================================================
+
+# Llama 3 8B Instruct - Good balance of size and capability
+[llm.providers.bedrock.models.llama-3-8b]
+rename = "meta.llama3-8b-instruct-v1:0"
+
+# Llama 3.3 70B Instruct - Latest Llama model with tool use support (via inference profile)
+[llm.providers.bedrock.models.llama-3-3-70b]
+rename = "us.meta.llama3-3-70b-instruct-v1:0"
+
+# ============================================================================
+# Mistral AI Models
+# ============================================================================
+
+# Mistral 7B Instruct - Efficient 7B parameter model
+[llm.providers.bedrock.models.mistral-7b]
+rename = "mistral.mistral-7b-instruct-v0:2"
+
+# Mistral Small (24.02) - Latest small Mistral model with tool use support
+[llm.providers.bedrock.models.mistral-small]
+rename = "mistral.mistral-small-2402-v1:0"
+
+# ============================================================================
+# Mistral AI Models
+# ============================================================================
+[llm.providers.bedrock.models.coco-jambo]
+rename = "ai21.jamba-1-5-mini-v1:0"
+
+# ============================================================================
+# MCP Configuration (optional - can be enabled if needed)
+# ============================================================================
+
+[mcp]
+enabled = false  # Set to true if you want to use MCP features
+
+# ============================================================================
+# Usage Examples
+# ============================================================================
+
+# After starting the server with this config, you can make requests like:
+#
+# curl -X POST http://localhost:9333/llm/v1/chat/completions \
+#   -H "Content-Type: application/json" \
+#   -d '{
+#     "model": "bedrock/claude-3-haiku",
+#     "messages": [
+#       {"role": "user", "content": "Hello! How are you?"}
+#     ],
+#     "max_tokens": 100
+#   }'
+#
+# Available models (based on your access):
+# - bedrock/titan-lite         (Titan Text G1 - Lite)
+# - bedrock/titan-express      (Titan Text G1 - Express)
+# - bedrock/nova-micro         (Nova Micro)
+# - bedrock/claude-instant     (Claude Instant)
+# - bedrock/claude-3-sonnet    (Claude 3 Sonnet)
+# - bedrock/claude-3-haiku     (Claude 3 Haiku)
+# - bedrock/command-r          (Command R)
+# - bedrock/deepseek-r1        (DeepSeek-R1)
+# - bedrock/llama-3-8b         (Llama 3 8B Instruct)
+# - bedrock/llama-3-3-70b      (Llama 3.3 70B Instruct) ✅ Tool use support
+# - bedrock/mistral-7b         (Mistral 7B Instruct)
+# - bedrock/mistral-small      (Mistral Small 24.02) ✅ Tool use support
+#
+# Note: Model availability depends on your AWS region and account permissions.
+# Some models may require requesting access through the AWS Bedrock console.

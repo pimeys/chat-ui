@@ -13,12 +13,15 @@ path = "/llm"
 [llm.providers.openai]
 type = "openai"
 api_key = "{{ env.OPENAI_API_KEY }}"
+models.gpt-5 = { rename = "gpt-5-nano-2025-08-07" }
 
 # Anthropic Provider (Claude models)
 [llm.providers.anthropic]
 type = "anthropic"
 api_key = "{{ env.ANTHROPIC_API_KEY }}"
+models.haiku = { rename = "claude-3-5-haiku-latest" }
 
 [llm.providers.google]
 type = "google"
 api_key = "{{ env.GOOGLE_API_KEY }}"
+models.gemini = { rename = "gemini-2.5-flash-lite" }

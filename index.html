@@ -17,6 +17,37 @@
                     <option value="">Loading models...</option>
                 </select>
                 <button id="refresh-models" title="Refresh model list">↻</button>
+                <label class="streaming-toggle" title="Enable streaming responses">
+                    <input type="checkbox" id="streaming-enabled" checked>
+                    <span>Stream</span>
+                </label>
+            </div>
+            <div class="tools-config">
+                <div class="tools-header">
+                    <h3>Tool Testing</h3>
+                    <button id="toggle-tools" class="toggle-btn">▼</button>
+                </div>
+                <div id="tools-panel" class="tools-panel">
+                    <div class="tool-selector">
+                        <label for="tool-preset">Tool Preset:</label>
+                        <select id="tool-preset">
+                            <option value="none">No Tools</option>
+                            <option value="weather">Weather Tool</option>
+                            <option value="calculator">Calculator Tool</option>
+                            <option value="search">Search Tool</option>
+                            <option value="multiple">Multiple Tools</option>
+                            <option value="custom">Custom JSON</option>
+                        </select>
+                    </div>
+                    <div id="custom-tools-container" class="custom-tools-container" style="display: none;">
+                        <label for="custom-tools">Custom Tools JSON:</label>
+                        <textarea id="custom-tools" placeholder='[{"type": "function", "function": {"name": "...", "description": "...", "parameters": {...}}}]'></textarea>
+                    </div>
+                    <div class="tools-preview">
+                        <label>Active Tools:</label>
+                        <pre id="tools-preview"></pre>
+                    </div>
+                </div>
             </div>
         </header>
 
