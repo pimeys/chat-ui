@@ -1,0 +1,27 @@
+# Nexus Configuration for LLM Chat UI Testing
+#
+# Start Nexus with this config:
+#   nexus --config chat-ui/nexus.toml
+
+# Health endpoint
+[server.health]
+enabled = true
+
+# LLM Configuration
+[llm]
+enabled = true
+path = "/llm"
+
+# OpenAI Provider
+[llm.providers.openai]
+type = "openai"
+api_key = "{{ env.OPENAI_API_KEY }}"
+
+# Anthropic Provider (Claude models)
+[llm.providers.anthropic]
+type = "anthropic"
+api_key = "{{ env.ANTHROPIC_API_KEY }}"
+
+[llm.providers.google]
+type = "google"
+api_key = "{{ env.GOOGLE_API_KEY }}"

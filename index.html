@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nexus LLM Chat</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Nexus LLM Chat</h1>
+            <div class="config">
+                <button id="new-chat" title="Start a new chat">New Chat</button>
+                <input type="text" id="endpoint" placeholder="http://localhost:8080/llm" value="http://localhost:8080/llm" title="Nexus endpoint (API keys are configured server-side)">
+                <select id="model" title="Select LLM model">
+                    <option value="">Loading models...</option>
+                </select>
+                <button id="refresh-models" title="Refresh model list">↻</button>
+            </div>
+        </header>
+
+        <main class="chat-container">
+            <div id="messages" class="messages">
+                <div class="message assistant">
+                    <div class="message-role">Assistant</div>
+                    <div class="message-content">Hello! I'm connected to Nexus LLM. How can I help you today?</div>
+                </div>
+            </div>
+        </main>
+
+        <footer>
+            <div class="input-container">
+                <textarea 
+                    id="user-input" 
+                    placeholder="Type your message here... (Shift+Enter for new line)"
+                    rows="1"
+                ></textarea>
+                <button id="send-btn" disabled>Send</button>
+            </div>
+            <div class="status" id="status">Ready</div>
+        </footer>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script type="module" src="app.js"></script>
+</body>
+</html>

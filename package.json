@@ -1,0 +1,17 @@
+{
+  "name": "nexus-chat-ui",
+  "version": "1.0.0",
+  "description": "Simple chat UI for testing Nexus LLM with OpenAI SDK",
+  "type": "module",
+  "scripts": {
+    "dev": "npx vite",
+    "build": "npx vite build",
+    "serve": "npx http-server -p 3000"
+  },
+  "dependencies": {
+    "openai": "^4.56.0"
+  },
+  "devDependencies": {
+    "vite": "^5.0.0"
+  }
+}
