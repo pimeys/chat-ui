@@ -49,7 +49,7 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 function initializeOpenAI() {
-  const endpoint = endpointInput.value || "http://localhost:8000/llm";
+  const endpoint = endpointInput.value || "http://localhost:8080/llm";
   localStorage.setItem("nexusEndpoint", endpoint);
 
   // Initialize OpenAI client with Nexus endpoint

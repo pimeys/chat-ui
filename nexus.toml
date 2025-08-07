@@ -1,9 +1,6 @@
-# Nexus Configuration for LLM Chat UI Testing
-#
-# Start Nexus with this config:
-#   nexus --config chat-ui/nexus.toml
+[server]
+listen_address = "127.0.0.1:8080"
 
-# Health endpoint
 [server.health]
 enabled = true
 
