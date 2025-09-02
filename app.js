@@ -10,6 +10,8 @@ const modelSelect = document.getElementById("model");
 const refreshModelsBtn = document.getElementById("refresh-models");
 const newChatBtn = document.getElementById("new-chat");
 const streamingCheckbox = document.getElementById("streaming-enabled");
+const clientIdInput = document.getElementById("client-id");
+const clientGroupInput = document.getElementById("client-group");
 
 // State
 let openai = null;
@@ -150,6 +152,37 @@ const toolPresets = {
 
 // Initialize on load
 document.addEventListener("DOMContentLoaded", () => {
+  // Load saved values from localStorage
+  const savedEndpoint = localStorage.getItem("nexusEndpoint");
+  const savedClientId = localStorage.getItem("nexusClientId");
+  const savedClientGroup = localStorage.getItem("nexusClientGroup");
+  
+  if (savedEndpoint) {
+    endpointInput.value = savedEndpoint;
+  }
+  
+  // Set client ID - use saved value or default
+  if (clientIdInput) {
+    if (savedClientId !== null) {
+      clientIdInput.value = savedClientId;
+    } else {
+      // First time - use default and save it
+      clientIdInput.value = "user-123";
+      localStorage.setItem("nexusClientId", "user-123");
+    }
+  }
+  
+  // Set client group - use saved value or default
+  if (clientGroupInput) {
+    if (savedClientGroup !== null) {
+      clientGroupInput.value = savedClientGroup;
+    } else {
+      // First time - use default and save it
+      clientGroupInput.value = "free";
+      localStorage.setItem("nexusClientGroup", "free");
+    }
+  }
+  
   initializeOpenAI();
   loadModels();
   initializeToolsUI();
@@ -161,6 +194,19 @@ document.addEventListener("DOMContentLoaded", () => {
     initializeOpenAI();
     loadModels();
   });
+  
+  // Add event listeners for header inputs
+  if (clientIdInput) {
+    clientIdInput.addEventListener("change", () => {
+      initializeOpenAI();
+    });
+  }
+  if (clientGroupInput) {
+    clientGroupInput.addEventListener("change", () => {
+      initializeOpenAI();
+    });
+  }
+  
   modelSelect.addEventListener("change", (e) => {
     selectedModel = e.target.value;
     localStorage.setItem("selectedModel", selectedModel);
@@ -177,12 +223,6 @@ document.addEventListener("DOMContentLoaded", () => {
     userInput.style.height = "auto";
     userInput.style.height = userInput.scrollHeight + "px";
   });
-
-  // Load saved endpoint
-  const savedEndpoint = localStorage.getItem("nexusEndpoint");
-  if (savedEndpoint) {
-    endpointInput.value = savedEndpoint;
-  }
 
   // Load saved streaming preference
   const savedStreaming = localStorage.getItem("streamingEnabled");
@@ -271,7 +311,21 @@ function updateToolsPreview() {
 
 function initializeOpenAI() {
   const endpoint = endpointInput.value || "http://localhost:8080/llm";
+  const clientId = clientIdInput ? clientIdInput.value : "";
+  const clientGroup = clientGroupInput ? clientGroupInput.value : "";
+  
   localStorage.setItem("nexusEndpoint", endpoint);
+  localStorage.setItem("nexusClientId", clientId);
+  localStorage.setItem("nexusClientGroup", clientGroup);
+
+  // Build default headers
+  const defaultHeaders = {};
+  if (clientId) {
+    defaultHeaders["x-client-id"] = clientId;
+  }
+  if (clientGroup) {
+    defaultHeaders["x-client-group"] = clientGroup;
+  }
 
   // Initialize OpenAI client with Nexus endpoint
   // Note: The API key is handled by Nexus server, not the browser
@@ -279,6 +333,7 @@ function initializeOpenAI() {
     apiKey: "not-used", // Nexus handles the real API key server-side
     baseURL: endpoint + "/v1",
     dangerouslyAllowBrowser: true, // Required for browser usage
+    defaultHeaders: defaultHeaders,
   });
 
   updateStatus("Connected to " + endpoint);
