@@ -26,26 +26,22 @@ This repository provides a complete Docker Compose setup for running [Nexus](htt
 
 1. **Set up environment variables:**
    
-   Create a `.env` file in the root directory with your API keys:
+   Copy the example environment file and add your API keys:
+   ```bash
+   cp example.env .env
+   ```
+   
+   Then edit `.env` and replace "CHANGE ME" with your actual API keys:
    ```bash
    # LLM Provider API Keys (at least one required)
-   OPENAI_API_KEY=sk-...
-   ANTHROPIC_API_KEY=sk-ant-...
-   GOOGLE_API_KEY=...
-   AWS_ACCESS_KEY_ID=...
-   AWS_SECRET_ACCESS_KEY=...
-   AWS_REGION=us-east-1
-
+   OPENAI_API_KEY="your-openai-key"
+   ANTHROPIC_API_KEY="your-anthropic-key"
+   GOOGLE_API_KEY="your-google-key"
+   
    # Required for GitHub MCP Server: GitHub Personal Access Token
    # Create at: https://github.com/settings/tokens
    # Required scopes: repo, read:org, read:user
-   GITHUB_TOKEN=ghp_...
-
-   # Optional: Grafana admin password (default: admin)
-   GRAFANA_PASSWORD=admin
-
-   # Optional: Logging level
-   RUST_LOG=info,nexus=debug,mcp=debug,llm=debug
+   GITHUB_TOKEN="your-github-token"
    ```
 
 2. **Start all services:**
@@ -73,11 +69,16 @@ This repository provides a complete Docker Compose setup for running [Nexus](htt
 
 #### Prerequisites
 
-Set up your API keys as environment variables:
+Copy and configure environment variables:
 ```bash
-export OPENAI_API_KEY="sk-..."
-export ANTHROPIC_API_KEY="sk-ant-..."
-export GOOGLE_API_KEY="..."
+cp example.env .env
+# Edit .env with your actual API keys
+```
+
+Then export them for nexus:
+```bash
+source .env
+export OPENAI_API_KEY ANTHROPIC_API_KEY GOOGLE_API_KEY GITHUB_TOKEN
 ```
 
 #### Running the System
