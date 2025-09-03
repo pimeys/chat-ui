@@ -47,9 +47,6 @@ max_export_batch_size = 512
 enabled = true
 path = "/mcp"
 
-# GitHub MCP Server - Search and interact with GitHub repositories
-# https://github.com/github/github-mcp-server
-# Comment out these lines if you don't have a GitHub PAT token
 [mcp.servers.github]
 url = "https://api.githubcopilot.com/mcp/"
 
@@ -61,7 +58,6 @@ token = "{{ env.GITHUB_TOKEN }}"
 enabled = true
 path = "/llm"
 
-# OpenAI Provider (if API key is provided)
 [llm.providers.openai]
 type = "openai"
 api_key = "{{ env.OPENAI_API_KEY }}"
@@ -69,7 +65,6 @@ api_key = "{{ env.OPENAI_API_KEY }}"
 [llm.providers.openai.models."gpt-4.1"]
 rename = "gpt-4.1-2025-04-14"
 
-# Anthropic Provider (if API key is provided)
 [llm.providers.anthropic]
 type = "anthropic"
 api_key = "{{ env.ANTHROPIC_API_KEY }}"
@@ -78,7 +73,6 @@ api_key = "{{ env.ANTHROPIC_API_KEY }}"
 [llm.providers.anthropic.models."claude-3-5-haiku-latest"]
 [llm.providers.anthropic.models."claude-3-opus-latest"]
 
-# Google Provider (if API key is provided)
 [llm.providers.google]
 type = "google"
 api_key = "{{ env.GOOGLE_API_KEY }}"

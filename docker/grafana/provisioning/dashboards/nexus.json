@@ -1109,7 +1109,7 @@
             "uid": "${datasource}"
           },
           "format": 0,
-          "rawSql": "SELECT\n    Attributes['tool_name'] as tool,\n    sum(Count) as \"Call Count\"\nFROM otel.otel_metrics_histogram\nWHERE\n    MetricName = 'mcp.tool.call.duration'\n    AND ServiceName = 'nexus-docker'\n    AND $__timeFilter(TimeUnix)\n    AND Attributes['tool_name'] <> ''\nGROUP BY tool\nORDER BY \"Call Count\" DESC",
+          "rawSql": "WITH unique_calls AS (\n    SELECT\n        Attributes['tool_name'] as tool,\n        Sum/Count as latency,\n        count(*) as occurrences\n    FROM otel.otel_metrics_histogram\n    WHERE\n        MetricName = 'mcp.tool.call.duration'\n        AND ServiceName = 'nexus-docker'\n        AND $__timeFilter(TimeUnix)\n        AND Attributes['tool_name'] <> ''\n    GROUP BY tool, latency\n)\nSELECT\n    tool,\n    count(*) as \"Call Count\"\nFROM unique_calls\nGROUP BY tool\nORDER BY \"Call Count\" DESC",
           "refId": "A"
         }
       ],
