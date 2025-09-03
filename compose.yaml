@@ -1,0 +1,115 @@
+services:
+  # Nexus LLM Chat UI
+  chat-ui:
+    build: .
+    ports:
+      - "5173:80"
+    depends_on:
+      - nexus
+    networks:
+      - nexus-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # Nexus AI Router
+  nexus:
+    image: ghcr.io/grafbase/nexus:stable
+    ports:
+      - "8080:8000"
+    environment:
+      # LLM Provider API Keys
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
+      # MCP Tokens
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+    volumes:
+      - ./docker/nexus.toml:/etc/nexus.toml:ro
+    command: ["--config", "/etc/nexus.toml", "--listen-address", "0.0.0.0:8000"]
+    depends_on:
+      - otel-collector
+    networks:
+      - nexus-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # OpenTelemetry Collector for metrics collection
+  otel-collector:
+    image: ghcr.io/open-telemetry/opentelemetry-collector-releases/opentelemetry-collector-contrib:0.133.0
+    command: ["--config=/etc/otel-collector-config.yml"]
+    volumes:
+      - ./docker/otel/otel-collector-config.yml:/etc/otel-collector-config.yml:ro
+    ports:
+      - "4317:4317" # OTLP gRPC receiver
+      - "4318:4318" # OTLP HTTP receiver
+      - "13133:13133" # Health check extension
+    depends_on:
+      - clickhouse
+    networks:
+      - nexus-net
+    restart: unless-stopped
+
+  # ClickHouse for storing OpenTelemetry metrics
+  clickhouse:
+    image: clickhouse/clickhouse-server:25.8-alpine
+    ports:
+      - "9000:9000" # Native protocol port
+      - "8123:8123" # HTTP port
+    environment:
+      CLICKHOUSE_SKIP_USER_SETUP: 1
+    volumes:
+      - ./docker/clickhouse/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d:ro
+      - clickhouse-data:/var/lib/clickhouse
+    networks:
+      - nexus-net
+    restart: unless-stopped
+
+  # Grafana for visualizing metrics
+  grafana:
+    image: grafana/grafana:12.1.1
+    ports:
+      - "3001:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
+      GF_INSTALL_PLUGINS: grafana-clickhouse-datasource
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /etc/grafana/provisioning/dashboards/nexus.json
+    volumes:
+      - ./docker/grafana/provisioning:/etc/grafana/provisioning:ro
+      - grafana-storage:/var/lib/grafana
+    depends_on:
+      - clickhouse
+    networks:
+      - nexus-net
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3000/api/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Optional: Redis for distributed rate limiting
+  redis:
+    image: redis:8-alpine
+    ports:
+      - "6379:6379"
+    networks:
+      - nexus-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+networks:
+  nexus-net:
+    driver: bridge
+
+volumes:
+  clickhouse-data:
+  grafana-storage:

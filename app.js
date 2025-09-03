@@ -1,5 +1,107 @@
 import OpenAI from "openai";
 
+// MCP Tools for Nexus integration
+class MCPClient {
+  constructor() {
+    this.availableTools = [];
+  }
+
+  initialize() {
+    // No initialization needed - tools are provided to the regular OpenAI client
+  }
+
+  async discoverTools() {
+    try {
+      // Fetch the actual tool definitions from the MCP server
+      const mcpEndpoint = (endpointInput.value || "http://localhost:8080/llm").replace(/\/llm$/, '/mcp');
+      
+      const headers = {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json, text/event-stream',
+      };
+      
+      const clientId = clientIdInput ? clientIdInput.value : "";
+      const clientGroup = clientGroupInput ? clientGroupInput.value : "";
+      
+      if (clientId) headers["x-client-id"] = clientId;
+      if (clientGroup) headers["x-client-group"] = clientGroup;
+      
+      const response = await fetch(mcpEndpoint, {
+        method: 'POST',
+        headers: headers,
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          method: 'tools/list',
+          params: {},
+          id: Date.now()
+        })
+      });
+      
+      // Parse SSE response
+      const text = await response.text();
+      let result = null;
+      const lines = text.split('\n');
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          const data = line.slice(6);
+          if (data && data !== '[DONE]') {
+            try {
+              result = JSON.parse(data);
+              break;
+            } catch (e) {
+              console.log('Failed to parse SSE line:', data);
+            }
+          }
+        }
+      }
+      
+      if (result && result.result && result.result.tools) {
+        // Convert MCP tools to OpenAI function format
+        const mcpTools = result.result.tools.map(tool => ({
+          type: "function",
+          function: {
+            name: tool.name,
+            description: tool.description || "No description provided",
+            parameters: tool.inputSchema || {
+              type: "object",
+              properties: {},
+              required: []
+            }
+          }
+        }));
+        
+        console.log('Discovered MCP tools from server:', mcpTools);
+        this.availableTools = mcpTools;
+        return mcpTools;
+      } else {
+        console.error('No tools found in MCP response:', result);
+        this.availableTools = [];
+        return [];
+      }
+    } catch (error) {
+      console.error('Failed to discover MCP tools:', error);
+      this.availableTools = [];
+      return [];
+    }
+  }
+
+  getSystemPrompt() {
+    return `You have access to MCP (Model Context Protocol) tools via Nexus. You MUST use the provided function tools, not write them as text.
+
+Available function tools:
+- search: Discovers available MCP tools. Call this function to find tools.
+- execute: Runs a specific MCP tool. Call this function to execute a tool.
+
+IMPORTANT: These are actual function tools you must call using function calling, NOT text commands to write out.
+
+Example: To get GitHub commits, you would:
+1. Call the search function with query="github"
+2. Call the execute function with tool="github__get_latest_commit" and appropriate arguments
+
+The MCP servers may provide tools for filesystem access, GitHub operations, and more.`;
+  }
+}
+
 // DOM elements
 const messagesContainer = document.getElementById("messages");
 const userInput = document.getElementById("user-input");
@@ -15,11 +117,14 @@ const clientGroupInput = document.getElementById("client-group");
 
 // State
 let openai = null;
+let mcpClient = null;
 let selectedModel = null;
 let isLoading = false;
 let conversationHistory = [];
 let streamingEnabled = true;
 let selectedTools = [];
+let mcpEnabled = false;
+let mcpTools = [];
 
 // Tool definitions
 const toolPresets = {
@@ -152,6 +257,16 @@ const toolPresets = {
 
 // Initialize on load
 document.addEventListener("DOMContentLoaded", () => {
+  // Set up MutationObserver to auto-scroll when content changes
+  const observer = new MutationObserver(() => {
+    scrollToBottom();
+  });
+  
+  observer.observe(messagesContainer, {
+    childList: true,
+    subtree: true,
+    characterData: true
+  });
   // Load saved values from localStorage
   const savedEndpoint = localStorage.getItem("nexusEndpoint");
   const savedClientId = localStorage.getItem("nexusClientId");
@@ -232,7 +347,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 });
 
-function initializeToolsUI() {
+async function initializeToolsUI() {
   const toggleBtn = document.getElementById("toggle-tools");
   const toolsPanel = document.getElementById("tools-panel");
   const toolPresetSelect = document.getElementById("tool-preset");
@@ -248,13 +363,25 @@ function initializeToolsUI() {
     toolsPanel.classList.toggle("collapsed");
     toggleBtn.textContent = toolsPanel.classList.contains("collapsed") ? "▶" : "▼";
   });
+  
+  // Initialize MCP tools by default since it's selected
+  mcpEnabled = true;
+  if (!mcpClient) {
+    mcpClient = new MCPClient();
+    mcpClient.initialize();
+  }
+  mcpTools = await mcpClient.discoverTools();
+  selectedTools = mcpTools;
+  console.log('Initialized MCP tools on page load:', mcpTools);
+  updateToolsPreview();
 
   // Handle tool preset selection
-  toolPresetSelect.addEventListener("change", (e) => {
+  toolPresetSelect.addEventListener("change", async (e) => {
     const preset = e.target.value;
     
     if (preset === "custom") {
       customToolsContainer.style.display = "block";
+      mcpEnabled = false;
       // Try to parse custom tools
       try {
         const customTools = customToolsTextarea.value.trim();
@@ -267,8 +394,20 @@ function initializeToolsUI() {
         console.error("Invalid JSON in custom tools:", error);
         selectedTools = [];
       }
+    } else if (preset === "mcp") {
+      customToolsContainer.style.display = "none";
+      mcpEnabled = true;
+      // Initialize MCP client if needed
+      if (!mcpClient) {
+        mcpClient = new MCPClient();
+        mcpClient.initialize();
+      }
+      // Load MCP tools
+      mcpTools = await mcpClient.discoverTools();
+      selectedTools = mcpTools;
     } else {
       customToolsContainer.style.display = "none";
+      mcpEnabled = false;
       selectedTools = toolPresets[preset] || [];
     }
     
@@ -294,19 +433,23 @@ function initializeToolsUI() {
       }
     }
   });
-
-  // Initialize with no tools
-  selectedTools = [];
-  updateToolsPreview();
+  
+  // Tools are already initialized above (MCP by default), don't clear them
 }
 
 function updateToolsPreview() {
   const toolsPreview = document.getElementById("tools-preview");
+  console.log('updateToolsPreview called, selectedTools:', selectedTools);
   if (selectedTools.length === 0) {
     toolsPreview.textContent = "No tools selected";
   } else {
     toolsPreview.textContent = JSON.stringify(selectedTools, null, 2);
   }
+}
+
+// Helper function to scroll to bottom
+function scrollToBottom() {
+  messagesContainer.scrollTop = messagesContainer.scrollHeight;
 }
 
 function initializeOpenAI() {
@@ -396,6 +539,8 @@ async function sendMessage() {
   const message = userInput.value.trim();
   if (!message || isLoading || !selectedModel) return;
 
+  console.log('sendMessage called, mcpEnabled:', mcpEnabled, 'selectedTools:', selectedTools);
+
   isLoading = true;
   sendBtn.disabled = true;
   userInput.disabled = true;
@@ -413,10 +558,23 @@ async function sendMessage() {
   updateStatus("Thinking...");
 
   try {
+    // Prepare messages with MCP system prompt if needed
+    let messages = [...conversationHistory];
+    if (mcpEnabled && mcpClient) {
+      const systemPrompt = mcpClient.getSystemPrompt();
+      if (systemPrompt) {
+        // Check if we already have a system message
+        const hasSystemMessage = messages.some(m => m.role === 'system');
+        if (!hasSystemMessage) {
+          messages.unshift({ role: 'system', content: systemPrompt });
+        }
+      }
+    }
+    
     // Prepare request parameters
     const requestParams = {
       model: selectedModel,
-      messages: conversationHistory,
+      messages: messages,
       max_tokens: 2000
     };
 
@@ -424,6 +582,9 @@ async function sendMessage() {
     if (selectedTools.length > 0) {
       requestParams.tools = selectedTools;
       requestParams.tool_choice = "auto";
+      console.log('Sending tools with request:', selectedTools);
+    } else {
+      console.log('No tools selected, selectedTools:', selectedTools);
     }
 
     if (streamingEnabled) {
@@ -467,9 +628,8 @@ async function sendMessage() {
             // Update the UI with plain text during streaming to avoid markdown parsing issues
             // We'll render markdown after streaming is complete
             contentEl.textContent = accumulatedContent;
-
-            // Auto-scroll to bottom
-            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            // Auto-scroll to bottom after each update
+            scrollToBottom();
           }
 
           // Handle tool calls
@@ -518,13 +678,13 @@ async function sendMessage() {
       
       // Add tool calls display if present
       if (toolCalls.length > 0) {
-        htmlContent = renderToolCalls(toolCalls) + htmlContent;
+        htmlContent = await renderToolCalls(toolCalls) + htmlContent;
       }
       
       contentEl.innerHTML = htmlContent;
       
       // Final scroll to bottom after markdown rendering
-      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+      scrollToBottom();
 
       // Add to conversation history
       const assistantMessage = { role: "assistant", content: fullResponse };
@@ -567,7 +727,7 @@ async function sendMessage() {
         
         // Add tool calls display if present
         if (toolCalls.length > 0) {
-          htmlContent = renderToolCalls(toolCalls) + htmlContent;
+          htmlContent = await renderToolCalls(toolCalls) + htmlContent;
         }
         
         contentEl.innerHTML = htmlContent;
@@ -575,7 +735,7 @@ async function sendMessage() {
         // Remove typing class if it exists
         messageEl.classList.remove("typing");
 
-        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        scrollToBottom();
 
         // Add to conversation history
         const assistantMessage = { role: "assistant", content: fullResponse };
@@ -626,7 +786,7 @@ function addMessage(role, content, isTyping = false) {
     `;
 
   messagesContainer.appendChild(messageDiv);
-  messagesContainer.scrollTop = messagesContainer.scrollHeight;
+  scrollToBottom();
 
   return messageId;
 }
@@ -641,7 +801,7 @@ function escapeHtml(text) {
   return div.innerHTML;
 }
 
-function renderToolCalls(toolCalls) {
+async function renderToolCalls(toolCalls) {
   if (!toolCalls || toolCalls.length === 0) return "";
   
   let html = '<div class="tool-calls-container">';
@@ -649,38 +809,359 @@ function renderToolCalls(toolCalls) {
   for (const toolCall of toolCalls) {
     const toolName = toolCall.function?.name || "unknown";
     let args = "{}";
+    let parsedArgs = {};
     
     try {
       if (toolCall.function?.arguments) {
-        const parsed = JSON.parse(toolCall.function.arguments);
-        args = JSON.stringify(parsed, null, 2);
+        parsedArgs = JSON.parse(toolCall.function.arguments);
+        args = JSON.stringify(parsedArgs, null, 2);
       }
     } catch (e) {
+      console.error('Failed to parse tool arguments:', e, toolCall.function?.arguments);
       args = toolCall.function?.arguments || "{}";
+      // Try to parse again in case it's a string
+      try {
+        parsedArgs = JSON.parse(args);
+      } catch (e2) {
+        parsedArgs = {};
+      }
     }
     
     const toolCallId = `tool-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     
-    html += `
-      <div class="tool-call" data-tool-call-id="${escapeHtml(toolCall.id)}">
-        <div class="tool-call-header">🔧 Tool Call: ${escapeHtml(toolName)}</div>
-        <div class="tool-call-details">
-          <strong>ID:</strong> ${escapeHtml(toolCall.id || "N/A")}<br>
-          <strong>Function:</strong> ${escapeHtml(toolName)}<br>
-          <strong>Arguments:</strong>
-          <div class="tool-call-json">
-            <pre>${escapeHtml(args)}</pre>
+    // For MCP mode, handle search and execute tools
+    if (mcpEnabled && mcpClient && (toolName === 'search' || toolName === 'execute')) {
+      try {
+        html += `
+          <div class="tool-call" data-tool-call-id="${escapeHtml(toolCall.id)}">
+            <div class="tool-call-header">🔧 MCP Tool: ${escapeHtml(toolName)}</div>
+            <div class="tool-call-details">
+              <strong>Function:</strong> ${escapeHtml(toolName)}<br>
+              <strong>Arguments:</strong>
+              <div class="tool-call-json">
+                <pre>${escapeHtml(args)}</pre>
+              </div>
+              <div class="tool-execution-status">⏳ Executing...</div>
+            </div>
           </div>
+        `;
+        
+        // Execute the MCP tool asynchronously
+        setTimeout(async () => {
+          await executeMCPTool(toolCall.id, toolName, parsedArgs);
+        }, 0);
+        
+      } catch (error) {
+        console.error('Error preparing MCP tool execution:', error);
+      }
+    } else {
+      // Regular tool call display
+      html += `
+        <div class="tool-call" data-tool-call-id="${escapeHtml(toolCall.id)}">
+          <div class="tool-call-header">🔧 Tool Call: ${escapeHtml(toolName)}</div>
+          <div class="tool-call-details">
+            <strong>ID:</strong> ${escapeHtml(toolCall.id || "N/A")}<br>
+            <strong>Function:</strong> ${escapeHtml(toolName)}<br>
+            <strong>Arguments:</strong>
+            <div class="tool-call-json">
+              <pre>${escapeHtml(args)}</pre>
+            </div>
+          </div>
+          <button class="tool-response-btn" onclick="openToolResponseDialog('${escapeHtml(toolCall.id)}', '${escapeHtml(toolName)}')">Provide Tool Response</button>
+          <button class="expand-json" onclick="copyToolCallJson('${toolCallId}')">Copy Full JSON</button>
+          <textarea id="${toolCallId}" style="display:none;">${escapeHtml(JSON.stringify(toolCall, null, 2))}</textarea>
         </div>
-        <button class="tool-response-btn" onclick="openToolResponseDialog('${escapeHtml(toolCall.id)}', '${escapeHtml(toolName)}')">Provide Tool Response</button>
-        <button class="expand-json" onclick="copyToolCallJson('${toolCallId}')">Copy Full JSON</button>
-        <textarea id="${toolCallId}" style="display:none;">${escapeHtml(JSON.stringify(toolCall, null, 2))}</textarea>
-      </div>
-    `;
+      `;
+    }
   }
   
   html += '</div>';
   return html;
+}
+
+// Execute MCP tool and handle response
+async function executeMCPTool(toolCallId, toolName, args) {
+  const toolCallEl = document.querySelector(`[data-tool-call-id="${toolCallId}"]`);
+  if (!toolCallEl) return;
+  
+  const statusEl = toolCallEl.querySelector('.tool-execution-status');
+  
+  try {
+    // Update UI to show we're executing
+    if (statusEl) {
+      statusEl.innerHTML = `⏳ Executing MCP tool...`;
+    }
+    
+    // Call the MCP server to execute the tool
+    let toolResult = "";
+    
+    try {
+      // The MCP endpoint at /mcp uses JSON-RPC protocol
+      const mcpEndpoint = (endpointInput.value || "http://localhost:8080/llm").replace(/\/llm$/, '/mcp');
+      
+      // Build headers with client ID and group, same as we do for LLM calls
+      // MCP requires accepting both JSON and SSE
+      const headers = {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json, text/event-stream',
+      };
+      
+      const clientId = clientIdInput ? clientIdInput.value : "";
+      const clientGroup = clientGroupInput ? clientGroupInput.value : "";
+      
+      if (clientId) {
+        headers["x-client-id"] = clientId;
+      }
+      if (clientGroup) {
+        headers["x-client-group"] = clientGroup;
+      }
+      
+      // For 'search' and 'execute' tools, we need to call the MCP server
+      console.log('executeMCPTool called with:', { toolName, args });
+      
+      if (toolName === 'search') {
+        // Call the search tool on the MCP server
+        const response = await fetch(mcpEndpoint, {
+          method: 'POST',
+          headers: headers,
+          body: JSON.stringify({
+            jsonrpc: '2.0',
+            method: 'tools/call',
+            params: {
+              name: 'search',
+              arguments: args // Pass the search arguments directly
+            },
+            id: Date.now()
+          })
+        });
+        
+        // MCP returns SSE format, we need to read the stream
+        const text = await response.text();
+        console.log('MCP tools/list raw response:', text);
+        
+        // Parse SSE data
+        let result = null;
+        const lines = text.split('\n');
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const data = line.slice(6); // Remove 'data: ' prefix
+            if (data && data !== '[DONE]') {
+              try {
+                result = JSON.parse(data);
+                break; // Take the first valid JSON response
+              } catch (e) {
+                console.log('Failed to parse SSE line:', data);
+              }
+            }
+          }
+        }
+        
+        console.log('MCP search response:', result);
+        
+        if (result && result.result) {
+          // The search tool returns structured content with results
+          if (result.result.structuredContent && result.result.structuredContent.results) {
+            const results = result.result.structuredContent.results;
+            if (results.length > 0) {
+              toolResult = results.map(r => 
+                `${r.name}: ${r.description} (score: ${r.score})`
+              ).join('\n\n');
+            } else {
+              toolResult = "No tools found matching your search.";
+            }
+          } else if (result.result.content) {
+            // Handle text content response
+            if (Array.isArray(result.result.content)) {
+              toolResult = result.result.content.map(item => {
+                if (item.type === 'text') {
+                  return item.text;
+                } else {
+                  return JSON.stringify(item);
+                }
+              }).join('\n');
+            } else {
+              toolResult = JSON.stringify(result.result);
+            }
+          } else {
+            toolResult = JSON.stringify(result.result);
+          }
+        } else if (result && result.error) {
+          toolResult = `MCP Error: ${result.error.message || JSON.stringify(result.error)}`;
+        } else {
+          toolResult = "No response from MCP server";
+        }
+        
+      } else if (toolName === 'execute') {
+        // Execute calls a specific MCP tool
+        console.log('Executing tool with args:', args);
+        
+        // The execute tool expects 'name' and 'arguments' parameters
+        const toolToExecute = args.name || args.tool;
+        const toolArguments = args.arguments || {};
+        
+        console.log('Calling MCP execute with:', { name: toolToExecute, arguments: toolArguments });
+        
+        const response = await fetch(mcpEndpoint, {
+          method: 'POST', 
+          headers: headers,
+          body: JSON.stringify({
+            jsonrpc: '2.0',
+            method: 'tools/call',
+            params: {
+              name: 'execute',
+              arguments: {
+                name: toolToExecute,
+                arguments: toolArguments
+              }
+            },
+            id: Date.now()
+          })
+        });
+        
+        // MCP returns SSE format, we need to read the stream
+        const text = await response.text();
+        console.log('MCP tools/call raw response:', text);
+        
+        // Parse SSE data
+        let result = null;
+        const lines = text.split('\n');
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const data = line.slice(6); // Remove 'data: ' prefix
+            if (data && data !== '[DONE]') {
+              try {
+                result = JSON.parse(data);
+                break; // Take the first valid JSON response
+              } catch (e) {
+                console.log('Failed to parse SSE line:', data);
+              }
+            }
+          }
+        }
+        
+        console.log('MCP tools/call parsed response:', result);
+        
+        if (result.result) {
+          // MCP returns content array with type and text/data
+          if (result.result.content && Array.isArray(result.result.content)) {
+            toolResult = result.result.content.map(item => {
+              if (item.type === 'text') {
+                return item.text;
+              } else {
+                return JSON.stringify(item);
+              }
+            }).join('\n');
+          } else {
+            toolResult = JSON.stringify(result.result);
+          }
+        } else if (result.error) {
+          toolResult = `Error: ${result.error.message || JSON.stringify(result.error)}`;
+        } else {
+          toolResult = "Tool execution failed";
+        }
+      }
+    } catch (mcpError) {
+      console.error('MCP call failed:', mcpError);
+      toolResult = `MCP Error: ${mcpError.message}`;
+    }
+    
+    // Add tool response to conversation history
+    const toolResponse = {
+      tool_call_id: toolCallId,
+      role: "tool",
+      content: toolResult
+    };
+    conversationHistory.push(toolResponse);
+    
+    // Update UI with result
+    if (statusEl) {
+      statusEl.innerHTML = `✅ Executed<br><pre style="font-size: 11px; overflow-x: auto;">${escapeHtml(toolResult)}</pre>`;
+    }
+    
+    // Continue the conversation with the tool response
+    try {
+      // Prepare messages including the tool response
+      let messages = [...conversationHistory];
+      
+      // Make the API call - Nexus will execute the MCP tool server-side
+      const requestParams = {
+        model: selectedModel,
+        messages: messages,
+        max_tokens: 2000
+      };
+      
+      // Keep tools available for further calls
+      if (selectedTools.length > 0) {
+        requestParams.tools = selectedTools;
+        requestParams.tool_choice = "auto";
+      }
+      
+      // Continue with the regular OpenAI client
+      const response = await openai.chat.completions.create(requestParams);
+      
+      // Handle the response
+      if (response.choices && response.choices.length > 0) {
+        const choice = response.choices[0];
+        const assistantResponse = choice.message;
+        
+        // Update the last tool response with actual result if provided
+        if (conversationHistory.length > 0 && conversationHistory[conversationHistory.length - 1].role === "tool") {
+          // The response from Nexus should contain the actual MCP execution result
+          conversationHistory[conversationHistory.length - 1].content = assistantResponse.content || "Tool executed";
+        }
+        
+        // Add assistant's interpretation of the tool result
+        const typingId = addMessage("assistant", "", true);
+        const messageEl = document.getElementById(typingId);
+        if (messageEl) {
+          const contentEl = messageEl.querySelector(".message-content");
+          if (contentEl) {
+            let htmlContent = marked.parse(assistantResponse.content || "");
+            
+            // Check if there are more tool calls
+            if (assistantResponse.tool_calls && assistantResponse.tool_calls.length > 0) {
+              htmlContent = await renderToolCalls(assistantResponse.tool_calls) + htmlContent;
+              conversationHistory.push({
+                role: "assistant",
+                content: assistantResponse.content,
+                tool_calls: assistantResponse.tool_calls
+              });
+            } else {
+              conversationHistory.push({
+                role: "assistant",
+                content: assistantResponse.content
+              });
+            }
+            
+            contentEl.innerHTML = htmlContent;
+            messageEl.classList.remove("typing");
+            scrollToBottom();
+          }
+        }
+        
+        // Update UI with success
+        if (statusEl) {
+          statusEl.innerHTML = `✅ MCP tool executed via Nexus`;
+        }
+      }
+      
+      updateStatus("Ready");
+    } catch (apiError) {
+      console.error('API call failed:', apiError);
+      if (statusEl) {
+        statusEl.innerHTML = `❌ Failed: ${escapeHtml(apiError.message)}`;
+      }
+      // Remove the tool response from history if execution failed
+      conversationHistory.pop();
+      updateStatus("Error: " + apiError.message);
+    }
+    
+  } catch (error) {
+    console.error('MCP tool execution failed:', error);
+    if (statusEl) {
+      statusEl.innerHTML = `❌ Execution failed: ${escapeHtml(error.message)}`;
+    }
+  }
 }
 
 // Add global function for copying tool call JSON
@@ -800,6 +1281,9 @@ async function continueAfterToolResponses() {
     if (selectedTools.length > 0) {
       requestParams.tools = selectedTools;
       requestParams.tool_choice = "auto";
+      console.log('Sending tools with request:', selectedTools);
+    } else {
+      console.log('No tools selected, selectedTools:', selectedTools);
     }
     
     if (streamingEnabled) {
@@ -828,7 +1312,7 @@ async function continueAfterToolResponses() {
           accumulatedContent += content;
           fullResponse += content;
           contentEl.textContent = accumulatedContent;
-          messagesContainer.scrollTop = messagesContainer.scrollHeight;
+          scrollToBottom();
         }
         
         if (delta?.tool_calls) {
@@ -857,10 +1341,10 @@ async function continueAfterToolResponses() {
       
       let htmlContent = marked.parse(fullResponse || "*No text response*");
       if (toolCalls.length > 0) {
-        htmlContent = renderToolCalls(toolCalls) + htmlContent;
+        htmlContent = await renderToolCalls(toolCalls) + htmlContent;
       }
       contentEl.innerHTML = htmlContent;
-      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+      scrollToBottom();
       
       const assistantMessage = { role: "assistant", content: fullResponse };
       if (toolCalls.length > 0) {
@@ -888,12 +1372,12 @@ async function continueAfterToolResponses() {
         let htmlContent = marked.parse(fullResponse || "*No text response*");
         
         if (toolCalls.length > 0) {
-          htmlContent = renderToolCalls(toolCalls) + htmlContent;
+          htmlContent = await renderToolCalls(toolCalls) + htmlContent;
         }
         
         contentEl.innerHTML = htmlContent;
         messageEl.classList.remove("typing");
-        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        scrollToBottom();
         
         const assistantMessage = { role: "assistant", content: fullResponse };
         if (toolCalls.length > 0) {

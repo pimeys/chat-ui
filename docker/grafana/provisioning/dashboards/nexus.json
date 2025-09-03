@@ -1,0 +1,1249 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": 1,
+  "links": [],
+  "panels": [
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 100,
+      "panels": [],
+      "title": "Overview",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "value"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "${__field.labels.model}"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 0,
+        "y": 1
+      },
+      "id": 1,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "text": {},
+        "textMode": "auto"
+      },
+      "pluginVersion": "10.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "${datasource}"
+          },
+          "format": 0,
+          "rawSql": "WITH operation_counts AS (\n    SELECT\n        Attributes['gen_ai.request.model'] as model,\n        Attributes['client.id'] as client_id,\n        max(Count) - min(Count) as operations_in_window\n    FROM otel_metrics_histogram\n    WHERE\n        MetricName = 'gen_ai.client.operation.duration'\n        AND ServiceName = 'nexus-docker'\n        AND $__timeFilter(TimeUnix)\n    GROUP BY model, client_id\n)\nSELECT sum(operations_in_window) as value\nFROM operation_counts",
+          "refId": "A"
+        }
+      ],
+      "title": "Total LLM Operations",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 100000
+              },
+              {
+                "color": "red",
+                "value": 500000
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "value"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "${__field.labels.model}"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 6,
+        "y": 1
+      },
+      "id": 2,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "text": {},
+        "textMode": "auto"
+      },
+      "pluginVersion": "10.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "${datasource}"
+          },
+          "format": 0,
+          "rawSql": "WITH token_counts AS (\n    SELECT\n        Attributes['gen_ai.request.model'] as model,\n        Attributes['client.id'] as client_id,\n        max(Value) - min(Value) as tokens_in_window\n    FROM otel_metrics_sum\n    WHERE\n        MetricName = 'gen_ai.client.input.token.usage'\n        AND ServiceName = 'nexus-docker'\n        AND $__timeFilter(TimeUnix)\n    GROUP BY model, client_id\n)\nSELECT sum(tokens_in_window) as value\nFROM token_counts",
+          "refId": "A"
+        }
+      ],
+      "title": "Total Input Tokens",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 50000
+              },
+              {
+                "color": "red",
+                "value": 100000
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "value"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "${__field.labels.model}"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 12,
+        "y": 1
+      },
+      "id": 3,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "text": {},
+        "textMode": "auto"
+      },
+      "pluginVersion": "10.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "${datasource}"
+          },
+          "format": 0,
+          "rawSql": "WITH token_counts AS (\n    SELECT\n        Attributes['gen_ai.request.model'] as model,\n        Attributes['client.id'] as client_id,\n        max(Value) - min(Value) as tokens_in_window\n    FROM otel_metrics_sum\n    WHERE\n        MetricName = 'gen_ai.client.output.token.usage'\n        AND ServiceName = 'nexus-docker'\n        AND $__timeFilter(TimeUnix)\n    GROUP BY model, client_id\n)\nSELECT sum(tokens_in_window) as value\nFROM token_counts",
+          "refId": "A"
+        }
+      ],
+      "title": "Total Output Tokens",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 2000
+              },
+              {
+                "color": "red",
+                "value": 5000
+              }
+            ]
+          },
+          "unit": "ms"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "value"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "${__field.labels.model}"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 18,
+        "y": 1
+      },
+      "id": 4,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "text": {},
+        "textMode": "auto"
+      },
+      "pluginVersion": "10.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "${datasource}"
+          },
+          "format": 0,
+          "rawSql": "SELECT avg(Sum/Count) as value\nFROM otel_metrics_histogram\nWHERE\n    MetricName = 'gen_ai.client.operation.duration'\n    AND ServiceName = 'nexus-docker'\n    AND $__timeFilter(TimeUnix)",
+          "refId": "A"
+        }
+      ],
+      "title": "Avg Response Time",
+      "type": "stat"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 5
+      },
+      "id": 101,
+      "panels": [],
+      "title": "Model Performance",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 2000
+              },
+              {
+                "color": "red",
+                "value": 5000
+              }
+            ]
+          },
+          "unit": "ms"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "value"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "${__field.labels.model}"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 6
+      },
+      "id": 6,
+      "options": {
+        "displayMode": "gradient",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [],
+          "fields": "/^Avg Latency$/",
+          "values": true
+        },
+        "showUnfilled": true,
+        "text": {}
+      },
+      "pluginVersion": "10.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "${datasource}"
+          },
+          "format": 0,
+          "rawSql": "WITH model_deltas AS (\n    SELECT\n        Attributes['gen_ai.request.model'] as model,\n        max(Count) - min(Count) as operations_in_window,\n        max(Sum) - min(Sum) as total_latency_in_window\n    FROM otel_metrics_histogram\n    WHERE\n        MetricName = 'gen_ai.client.operation.duration'\n        AND ServiceName = 'nexus-docker'\n        AND $__timeFilter(TimeUnix)\n    GROUP BY model\n    HAVING max(Count) > min(Count)\n)\nSELECT\n    model,\n    total_latency_in_window / operations_in_window as \"Avg Latency\"\nFROM model_deltas\nWHERE operations_in_window > 0\nORDER BY \"Avg Latency\" DESC",
+          "refId": "A"
+        }
+      ],
+      "title": "Avg Latency by Model",
+      "type": "bargauge"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 14
+      },
+      "id": 102,
+      "panels": [],
+      "title": "Token Usage",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "fillOpacity": 80,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineWidth": 1,
+            "scaleDistribution": {
+              "type": "linear"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Input Tokens"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "gauge",
+                  "mode": "gradient"
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "thresholds"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "dark-green",
+                      "value": 20000
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "max",
+                "value": 50000
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Output Tokens"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "gauge",
+                  "mode": "gradient"
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "thresholds"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "yellow",
+                      "value": null
+                    },
+                    {
+                      "color": "orange",
+                      "value": 500
+                    },
+                    {
+                      "color": "red",
+                      "value": 1000
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "max",
+                "value": 5000
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 15
+      },
+      "id": 7,
+      "options": {
+        "showHeader": true,
+        "sortBy": [
+          {
+            "desc": true,
+            "displayName": "Input Tokens"
+          }
+        ],
+        "cellHeight": "md"
+      },
+      "pluginVersion": "10.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "${datasource}"
+          },
+          "format": 0,
+          "rawSql": "WITH combined AS (\n    SELECT\n        Attributes['gen_ai.request.model'] as model,\n        MetricName,\n        Attributes['client.id'] as client_id,\n        max(Value) - min(Value) as tokens_in_window\n    FROM otel_metrics_sum\n    WHERE\n        MetricName IN ('gen_ai.client.input.token.usage', 'gen_ai.client.output.token.usage')\n        AND ServiceName = 'nexus-docker'\n        AND $__timeFilter(TimeUnix)\n    GROUP BY model, MetricName, client_id\n)\nSELECT\n    model as \"Model\",\n    sum(if(MetricName = 'gen_ai.client.input.token.usage', tokens_in_window, 0)) as \"Input Tokens\",\n    sum(if(MetricName = 'gen_ai.client.output.token.usage', tokens_in_window, 0)) as \"Output Tokens\"\nFROM combined\nWHERE model != ''\nGROUP BY model\nORDER BY (\"Input Tokens\" + \"Output Tokens\") DESC",
+          "refId": "A"
+        }
+      ],
+      "title": "Token Usage by Model",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Operations"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "short"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Avg Latency (ms)"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "ms"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "P95 Latency (ms)"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "ms"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Input Tokens"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "short"
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "gauge",
+                  "mode": "gradient"
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "continuous-GrYlRd"
+                }
+              },
+              {
+                "id": "max",
+                "value": 100000
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Output Tokens"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "short"
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "gauge",
+                  "mode": "gradient"
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "continuous-BlPu"
+                }
+              },
+              {
+                "id": "max",
+                "value": 10000
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Total Tokens"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "short"
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "gauge",
+                  "mode": "gradient"
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "continuous-GrYlRd"
+                }
+              },
+              {
+                "id": "max",
+                "value": 110000
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 15
+      },
+      "id": 8,
+      "options": {
+        "showHeader": true,
+        "sortBy": []
+      },
+      "pluginVersion": "10.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "${datasource}"
+          },
+          "format": 0,
+          "rawSql": "WITH token_deltas AS (\n    SELECT\n        Attributes['client.id'] as client_id,\n        Attributes['gen_ai.request.model'] as model,\n        MetricName,\n        Value - lagInFrame(Value, 1, Value) OVER (PARTITION BY MetricName, Attributes['gen_ai.request.model'], Attributes['client.id'] ORDER BY TimeUnix) as delta\n    FROM otel_metrics_sum\n    WHERE\n        MetricName IN ('gen_ai.client.input.token.usage', 'gen_ai.client.output.token.usage')\n        AND ServiceName = 'nexus-docker'\n        AND $__timeFilter(TimeUnix)\n)\nSELECT\n    client_id as \"Client ID\",\n    sum(if(MetricName = 'gen_ai.client.input.token.usage' AND delta >= 0, delta, 0)) as \"Input Tokens\",\n    sum(if(MetricName = 'gen_ai.client.output.token.usage' AND delta >= 0, delta, 0)) as \"Output Tokens\",\n    sum(if(delta >= 0, delta, 0)) as \"Total Tokens\"\nFROM token_deltas\nWHERE client_id IS NOT NULL AND client_id != ''\nGROUP BY client_id\nHAVING \"Total Tokens\" > 0\nORDER BY \"Total Tokens\" DESC",
+          "refId": "A"
+        }
+      ],
+      "title": "Token Usage by Client ID",
+      "type": "table"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 23
+      },
+      "id": 104,
+      "panels": [],
+      "title": "Time to First Token",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "points",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 0,
+            "pointSize": 10,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "always",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "ms"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "value"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "${__field.labels.model}"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 24
+      },
+      "id": 10,
+      "options": {
+        "legend": {
+          "calcs": [
+            "mean",
+            "lastNotNull"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "10.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "${datasource}"
+          },
+          "format": 0,
+          "rawSql": "WITH time_windows AS (\n    SELECT\n        toStartOfInterval(TimeUnix, INTERVAL 1 minute) as time,\n        Attributes['gen_ai.request.model'] as model,\n        Attributes['client.id'] as client_id,\n        max(Count) as max_count,\n        min(Count) as min_count,\n        max(Sum) as max_sum,\n        min(Sum) as min_sum\n    FROM otel_metrics_histogram\n    WHERE\n        MetricName = 'gen_ai.client.time_to_first_token'\n        AND ServiceName = 'nexus-docker'\n        AND $__timeFilter(TimeUnix)\n        AND Attributes['gen_ai.request.model'] != ''\n    GROUP BY time, model, client_id\n),\ndeltas AS (\n    SELECT\n        time,\n        model,\n        sum(max_count - min_count) as delta_count,\n        sum(max_sum - min_sum) as delta_sum\n    FROM time_windows\n    GROUP BY time, model\n    HAVING sum(max_count - min_count) > 0\n)\nSELECT\n    time,\n    model,\n    delta_sum / delta_count as value\nFROM deltas\nORDER BY time, model",
+          "refId": "A"
+        }
+      ],
+      "title": "Time to First Token - By Model",
+      "transformations": [
+        {
+          "id": "groupingToMatrix",
+          "options": {
+            "columnField": "model",
+            "rowField": "time",
+            "valueField": "value"
+          }
+        },
+        {
+          "id": "convertFieldType",
+          "options": {
+            "conversions": [
+              {
+                "destinationType": "time",
+                "targetField": "time"
+              }
+            ],
+            "fields": {}
+          }
+        }
+      ],
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 32
+      },
+      "id": 105,
+      "panels": [],
+      "title": "MCP Tool Performance",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 100
+              },
+              {
+                "color": "red",
+                "value": 300
+              }
+            ]
+          },
+          "unit": "ms"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "value"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "${__field.labels.model}"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 33
+      },
+      "id": 12,
+      "options": {
+        "displayMode": "gradient",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [],
+          "fields": "/^Avg Latency$/",
+          "values": true
+        },
+        "showUnfilled": true,
+        "text": {}
+      },
+      "pluginVersion": "10.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "${datasource}"
+          },
+          "format": 0,
+          "rawSql": "WITH tool_deltas AS (\n    SELECT\n        Attributes['tool_name'] as tool,\n        Attributes['client.id'] as client_id,\n        max(Count) - min(Count) as operations_in_window,\n        max(Sum) - min(Sum) as total_latency_in_window\n    FROM otel_metrics_histogram\n    WHERE\n        MetricName = 'mcp.tool.call.duration'\n        AND ServiceName = 'nexus-docker'\n        AND $__timeFilter(TimeUnix)\n    GROUP BY tool, client_id\n)\nSELECT\n    tool,\n    sum(total_latency_in_window) / sum(operations_in_window) as \"Avg Latency\"\nFROM tool_deltas\nWHERE operations_in_window > 0 AND tool != ''\nGROUP BY tool\nORDER BY \"Avg Latency\" DESC",
+          "refId": "A"
+        }
+      ],
+      "title": "MCP Tool Call Avg Latency by Tool",
+      "type": "bargauge"
+    },
+    {
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 10
+              },
+              {
+                "color": "red",
+                "value": 50
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "value"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "${__field.labels.model}"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 33
+      },
+      "id": 13,
+      "options": {
+        "displayMode": "gradient",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [],
+          "fields": "/^Call Count$/",
+          "values": true
+        },
+        "showUnfilled": true,
+        "text": {}
+      },
+      "pluginVersion": "10.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "${datasource}"
+          },
+          "format": 0,
+          "rawSql": "WITH tool_deltas AS (\n    SELECT\n        Attributes['tool_name'] as tool,\n        Attributes['client.id'] as client_id,\n        max(Count) - min(Count) as operations_in_window\n    FROM otel_metrics_histogram\n    WHERE\n        MetricName = 'mcp.tool.call.duration'\n        AND ServiceName = 'nexus-docker'\n        AND $__timeFilter(TimeUnix)\n    GROUP BY tool, client_id\n)\nSELECT\n    tool,\n    sum(operations_in_window) as \"Call Count\"\nFROM tool_deltas\nWHERE operations_in_window > 0 AND tool != ''\nGROUP BY tool\nORDER BY \"Call Count\" DESC",
+          "refId": "A"
+        }
+      ],
+      "title": "MCP Tool Call Count by Tool",
+      "type": "bargauge"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 41
+      },
+      "id": 103,
+      "panels": [],
+      "title": "Recent Activity",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 3000
+              },
+              {
+                "color": "red",
+                "value": 5000
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Latency (ms)"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "ms"
+              },
+              {
+                "id": "custom.displayMode",
+                "value": "color-background"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 42
+      },
+      "id": 9,
+      "options": {
+        "showHeader": true,
+        "sortBy": [
+          {
+            "desc": true,
+            "displayName": "Time"
+          }
+        ],
+        "cellHeight": "sm"
+      },
+      "pluginVersion": "10.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "${datasource}"
+          },
+          "format": 0,
+          "rawSql": "WITH recent_changes AS (\n    SELECT\n        Attributes['client.id'] as client,\n        Attributes['gen_ai.request.model'] as model,\n        Count,\n        min(TimeUnix) as first_seen,\n        max(TimeUnix) as last_seen,\n        any(Sum) as sum_value\n    FROM otel_metrics_histogram\n    WHERE\n        MetricName = 'gen_ai.client.operation.duration'\n        AND ServiceName = 'nexus-docker'\n        AND TimeUnix > now() - interval 4 hours\n    GROUP BY client, model, Count\n),\nactivity_periods AS (\n    SELECT\n        toStartOfFiveMinutes(first_seen) as period,\n        client,\n        model,\n        Count,\n        sum_value,\n        first_seen\n    FROM recent_changes\n    WHERE first_seen > now() - interval 2 hours\n)\nSELECT\n    formatDateTime(period, '%Y-%m-%d %H:%i') as \"Time Period\",\n    model as \"Model\",\n    client as \"Client\",\n    count() as \"New Count Values\",\n    max(Count) - min(Count) as \"Request Increment\",\n    round(avg(sum_value/Count)) as \"Avg Latency (ms)\"\nFROM activity_periods\nGROUP BY period, model, client\nORDER BY period DESC, client, model\nLIMIT 20",
+          "refId": "A"
+        }
+      ],
+      "title": "Request Activity Summary (5-minute intervals)",
+      "type": "table"
+    }
+  ],
+  "refresh": "10s",
+  "schemaVersion": 39,
+  "tags": [
+    "nexus",
+    "llm",
+    "mcp",
+    "opentelemetry"
+  ],
+  "templating": {
+    "list": [
+      {
+        "current": {
+          "selected": false,
+          "text": "ClickHouse",
+          "value": "ClickHouse"
+        },
+        "hide": 0,
+        "includeAll": false,
+        "label": "Data Source",
+        "multi": false,
+        "name": "datasource",
+        "options": [],
+        "query": "grafana-clickhouse-datasource",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "type": "datasource"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "",
+  "title": "Nexus Metrics Dashboard",
+  "uid": "nexus-metrics",
+  "version": 1,
+  "weekStart": ""
+}

@@ -1,0 +1,17 @@
+apiVersion: 1
+
+datasources:
+  - name: ClickHouse
+    type: grafana-clickhouse-datasource
+    access: proxy
+    url: http://clickhouse:8123
+    isDefault: true
+    jsonData:
+      defaultDatabase: otel
+      port: 9000
+      server: clickhouse
+      username: default
+      tlsSkipVerify: true
+    secureJsonData:
+      password: ""
+    editable: true

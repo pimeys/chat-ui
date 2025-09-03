@@ -1,0 +1,9 @@
+node_modules
+.git
+.env
+*.md
+package-lock.json
+package.json
+.gitignore
+docker
+nexus*.toml
