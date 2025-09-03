@@ -1,22 +1,7 @@
 services:
-  # Nexus LLM Chat UI
-  chat-ui:
-    build: .
-    ports:
-      - "5173:80"
-    depends_on:
-      - nexus
-    networks:
-      - nexus-net
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:80"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-
   # Nexus AI Router
   nexus:
-    image: ghcr.io/grafbase/nexus:stable
+    image: nexus:google-fix
     ports:
       - "8080:8000"
     environment:

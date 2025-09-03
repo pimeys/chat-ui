@@ -101,7 +101,7 @@
             "uid": "${datasource}"
           },
           "format": 0,
-          "rawSql": "WITH operation_counts AS (\n    SELECT\n        Attributes['gen_ai.request.model'] as model,\n        Attributes['client.id'] as client_id,\n        max(Count) - min(Count) as operations_in_window\n    FROM otel_metrics_histogram\n    WHERE\n        MetricName = 'gen_ai.client.operation.duration'\n        AND ServiceName = 'nexus-docker'\n        AND $__timeFilter(TimeUnix)\n    GROUP BY model, client_id\n)\nSELECT sum(operations_in_window) as value\nFROM operation_counts",
+          "rawSql": "WITH operation_counts AS (\n    SELECT\n        Attributes['gen_ai.request.model'] as model,\n        Attributes['client.id'] as client_id,\n        max(Count) - min(Count) as operations_in_window\n    FROM otel.otel_metrics_histogram\n    WHERE\n        MetricName = 'gen_ai.client.operation.duration'\n        AND ServiceName = 'nexus-docker'\n        AND $__timeFilter(TimeUnix)\n    GROUP BY model, client_id\n)\nSELECT sum(operations_in_window) as value\nFROM operation_counts",
           "refId": "A"
         }
       ],
@@ -183,7 +183,7 @@
             "uid": "${datasource}"
           },
           "format": 0,
-          "rawSql": "WITH token_counts AS (\n    SELECT\n        Attributes['gen_ai.request.model'] as model,\n        Attributes['client.id'] as client_id,\n        max(Value) - min(Value) as tokens_in_window\n    FROM otel_metrics_sum\n    WHERE\n        MetricName = 'gen_ai.client.input.token.usage'\n        AND ServiceName = 'nexus-docker'\n        AND $__timeFilter(TimeUnix)\n    GROUP BY model, client_id\n)\nSELECT sum(tokens_in_window) as value\nFROM token_counts",
+          "rawSql": "WITH token_counts AS (\n    SELECT\n        Attributes['gen_ai.request.model'] as model,\n        Attributes['client.id'] as client_id,\n        max(Value) - min(Value) as tokens_in_window\n    FROM otel.otel_metrics_sum\n    WHERE\n        MetricName = 'gen_ai.client.input.token.usage'\n        AND ServiceName = 'nexus-docker'\n        AND $__timeFilter(TimeUnix)\n    GROUP BY model, client_id\n)\nSELECT sum(tokens_in_window) as value\nFROM token_counts",
           "refId": "A"
         }
       ],
@@ -265,7 +265,7 @@
             "uid": "${datasource}"
           },
           "format": 0,
-          "rawSql": "WITH token_counts AS (\n    SELECT\n        Attributes['gen_ai.request.model'] as model,\n        Attributes['client.id'] as client_id,\n        max(Value) - min(Value) as tokens_in_window\n    FROM otel_metrics_sum\n    WHERE\n        MetricName = 'gen_ai.client.output.token.usage'\n        AND ServiceName = 'nexus-docker'\n        AND $__timeFilter(TimeUnix)\n    GROUP BY model, client_id\n)\nSELECT sum(tokens_in_window) as value\nFROM token_counts",
+          "rawSql": "WITH token_counts AS (\n    SELECT\n        Attributes['gen_ai.request.model'] as model,\n        Attributes['client.id'] as client_id,\n        max(Value) - min(Value) as tokens_in_window\n    FROM otel.otel_metrics_sum\n    WHERE\n        MetricName = 'gen_ai.client.output.token.usage'\n        AND ServiceName = 'nexus-docker'\n        AND $__timeFilter(TimeUnix)\n    GROUP BY model, client_id\n)\nSELECT sum(tokens_in_window) as value\nFROM token_counts",
           "refId": "A"
         }
       ],
@@ -395,7 +395,8 @@
               }
             ]
           },
-          "unit": "ms"
+          "unit": "ms",
+          "min": 0
         },
         "overrides": [
           {
@@ -427,8 +428,10 @@
           "fields": "/^Avg Latency$/",
           "values": true
         },
-        "showUnfilled": true,
-        "text": {}
+        "showUnfilled": false,
+        "text": {},
+        "minVizHeight": 40,
+        "minVizWidth": 0
       },
       "pluginVersion": "10.0.0",
       "targets": [
@@ -438,7 +441,7 @@
             "uid": "${datasource}"
           },
           "format": 0,
-          "rawSql": "WITH model_deltas AS (\n    SELECT\n        Attributes['gen_ai.request.model'] as model,\n        max(Count) - min(Count) as operations_in_window,\n        max(Sum) - min(Sum) as total_latency_in_window\n    FROM otel_metrics_histogram\n    WHERE\n        MetricName = 'gen_ai.client.operation.duration'\n        AND ServiceName = 'nexus-docker'\n        AND $__timeFilter(TimeUnix)\n    GROUP BY model\n    HAVING max(Count) > min(Count)\n)\nSELECT\n    model,\n    total_latency_in_window / operations_in_window as \"Avg Latency\"\nFROM model_deltas\nWHERE operations_in_window > 0\nORDER BY \"Avg Latency\" DESC",
+          "rawSql": "WITH model_deltas AS (\n    SELECT\n        Attributes['gen_ai.request.model'] as model,\n        max(Count) - min(Count) as operations_in_window,\n        max(Sum) - min(Sum) as total_latency_in_window\n    FROM otel.otel_metrics_histogram\n    WHERE\n        MetricName = 'gen_ai.client.operation.duration'\n        AND ServiceName = 'nexus-docker'\n        AND $__timeFilter(TimeUnix)\n    GROUP BY model\n    HAVING max(Count) > min(Count)\n)\nSELECT\n    model,\n    total_latency_in_window / operations_in_window as \"Avg Latency\"\nFROM model_deltas\nWHERE operations_in_window > 0\nORDER BY \"Avg Latency\" DESC",
           "refId": "A"
         }
       ],
@@ -612,7 +615,7 @@
             "uid": "${datasource}"
           },
           "format": 0,
-          "rawSql": "WITH combined AS (\n    SELECT\n        Attributes['gen_ai.request.model'] as model,\n        MetricName,\n        Attributes['client.id'] as client_id,\n        max(Value) - min(Value) as tokens_in_window\n    FROM otel_metrics_sum\n    WHERE\n        MetricName IN ('gen_ai.client.input.token.usage', 'gen_ai.client.output.token.usage')\n        AND ServiceName = 'nexus-docker'\n        AND $__timeFilter(TimeUnix)\n    GROUP BY model, MetricName, client_id\n)\nSELECT\n    model as \"Model\",\n    sum(if(MetricName = 'gen_ai.client.input.token.usage', tokens_in_window, 0)) as \"Input Tokens\",\n    sum(if(MetricName = 'gen_ai.client.output.token.usage', tokens_in_window, 0)) as \"Output Tokens\"\nFROM combined\nWHERE model != ''\nGROUP BY model\nORDER BY (\"Input Tokens\" + \"Output Tokens\") DESC",
+          "rawSql": "WITH combined AS (\n    SELECT\n        Attributes['gen_ai.request.model'] as model,\n        MetricName,\n        Attributes['client.id'] as client_id,\n        max(Value) - min(Value) as tokens_in_window\n    FROM otel.otel_metrics_sum\n    WHERE\n        MetricName IN ('gen_ai.client.input.token.usage', 'gen_ai.client.output.token.usage')\n        AND ServiceName = 'nexus-docker'\n        AND $__timeFilter(TimeUnix)\n    GROUP BY model, MetricName, client_id\n)\nSELECT\n    model as \"Model\",\n    sum(if(MetricName = 'gen_ai.client.input.token.usage', tokens_in_window, 0)) as \"Input Tokens\",\n    sum(if(MetricName = 'gen_ai.client.output.token.usage', tokens_in_window, 0)) as \"Output Tokens\"\nFROM combined\nWHERE model != ''\nGROUP BY model\nORDER BY (\"Input Tokens\" + \"Output Tokens\") DESC",
           "refId": "A"
         }
       ],
@@ -800,7 +803,7 @@
             "uid": "${datasource}"
           },
           "format": 0,
-          "rawSql": "WITH token_deltas AS (\n    SELECT\n        Attributes['client.id'] as client_id,\n        Attributes['gen_ai.request.model'] as model,\n        MetricName,\n        Value - lagInFrame(Value, 1, Value) OVER (PARTITION BY MetricName, Attributes['gen_ai.request.model'], Attributes['client.id'] ORDER BY TimeUnix) as delta\n    FROM otel_metrics_sum\n    WHERE\n        MetricName IN ('gen_ai.client.input.token.usage', 'gen_ai.client.output.token.usage')\n        AND ServiceName = 'nexus-docker'\n        AND $__timeFilter(TimeUnix)\n)\nSELECT\n    client_id as \"Client ID\",\n    sum(if(MetricName = 'gen_ai.client.input.token.usage' AND delta >= 0, delta, 0)) as \"Input Tokens\",\n    sum(if(MetricName = 'gen_ai.client.output.token.usage' AND delta >= 0, delta, 0)) as \"Output Tokens\",\n    sum(if(delta >= 0, delta, 0)) as \"Total Tokens\"\nFROM token_deltas\nWHERE client_id IS NOT NULL AND client_id != ''\nGROUP BY client_id\nHAVING \"Total Tokens\" > 0\nORDER BY \"Total Tokens\" DESC",
+          "rawSql": "WITH token_deltas AS (\n    SELECT\n        Attributes['client.id'] as client_id,\n        Attributes['gen_ai.request.model'] as model,\n        MetricName,\n        Value - lagInFrame(Value, 1, Value) OVER (PARTITION BY MetricName, Attributes['gen_ai.request.model'], Attributes['client.id'] ORDER BY TimeUnix) as delta\n    FROM otel.otel_metrics_sum\n    WHERE\n        MetricName IN ('gen_ai.client.input.token.usage', 'gen_ai.client.output.token.usage')\n        AND ServiceName = 'nexus-docker'\n        AND $__timeFilter(TimeUnix)\n)\nSELECT\n    client_id as \"Client ID\",\n    sum(if(MetricName = 'gen_ai.client.input.token.usage' AND delta >= 0, delta, 0)) as \"Input Tokens\",\n    sum(if(MetricName = 'gen_ai.client.output.token.usage' AND delta >= 0, delta, 0)) as \"Output Tokens\",\n    sum(if(delta >= 0, delta, 0)) as \"Total Tokens\"\nFROM token_deltas\nWHERE client_id IS NOT NULL AND client_id != ''\nGROUP BY client_id\nHAVING \"Total Tokens\" > 0\nORDER BY \"Total Tokens\" DESC",
           "refId": "A"
         }
       ],
@@ -915,7 +918,7 @@
             "uid": "${datasource}"
           },
           "format": 0,
-          "rawSql": "WITH time_windows AS (\n    SELECT\n        toStartOfInterval(TimeUnix, INTERVAL 1 minute) as time,\n        Attributes['gen_ai.request.model'] as model,\n        Attributes['client.id'] as client_id,\n        max(Count) as max_count,\n        min(Count) as min_count,\n        max(Sum) as max_sum,\n        min(Sum) as min_sum\n    FROM otel_metrics_histogram\n    WHERE\n        MetricName = 'gen_ai.client.time_to_first_token'\n        AND ServiceName = 'nexus-docker'\n        AND $__timeFilter(TimeUnix)\n        AND Attributes['gen_ai.request.model'] != ''\n    GROUP BY time, model, client_id\n),\ndeltas AS (\n    SELECT\n        time,\n        model,\n        sum(max_count - min_count) as delta_count,\n        sum(max_sum - min_sum) as delta_sum\n    FROM time_windows\n    GROUP BY time, model\n    HAVING sum(max_count - min_count) > 0\n)\nSELECT\n    time,\n    model,\n    delta_sum / delta_count as value\nFROM deltas\nORDER BY time, model",
+          "rawSql": "WITH unique_values AS (\n    SELECT\n        min(TimeUnix) as first_seen,\n        Attributes['gen_ai.request.model'] as model,\n        Sum/Count as latency,\n        Count\n    FROM otel.otel_metrics_histogram\n    WHERE\n        MetricName = 'gen_ai.client.time_to_first_token'\n        AND ServiceName = 'nexus-docker'\n        AND $__timeFilter(TimeUnix)\n        AND Attributes['gen_ai.request.model'] != ''\n        AND Count > 0\n    GROUP BY model, latency, Count\n),\ntime_windows AS (\n    SELECT\n        toStartOfInterval(first_seen, INTERVAL 1 minute) as time,\n        model,\n        avg(latency) as value\n    FROM unique_values\n    GROUP BY time, model\n)\nSELECT\n    time,\n    model,\n    value\nFROM time_windows\nORDER BY time, model",
           "refId": "A"
         }
       ],
@@ -1028,7 +1031,7 @@
             "uid": "${datasource}"
           },
           "format": 0,
-          "rawSql": "WITH tool_deltas AS (\n    SELECT\n        Attributes['tool_name'] as tool,\n        Attributes['client.id'] as client_id,\n        max(Count) - min(Count) as operations_in_window,\n        max(Sum) - min(Sum) as total_latency_in_window\n    FROM otel_metrics_histogram\n    WHERE\n        MetricName = 'mcp.tool.call.duration'\n        AND ServiceName = 'nexus-docker'\n        AND $__timeFilter(TimeUnix)\n    GROUP BY tool, client_id\n)\nSELECT\n    tool,\n    sum(total_latency_in_window) / sum(operations_in_window) as \"Avg Latency\"\nFROM tool_deltas\nWHERE operations_in_window > 0 AND tool != ''\nGROUP BY tool\nORDER BY \"Avg Latency\" DESC",
+          "rawSql": "SELECT\n    Attributes['tool_name'] as tool,\n    avg(Sum/Count) as \"Avg Latency\"\nFROM otel.otel_metrics_histogram\nWHERE\n    MetricName = 'mcp.tool.call.duration'\n    AND ServiceName = 'nexus-docker'\n    AND $__timeFilter(TimeUnix)\n    AND Attributes['tool_name'] <> ''\nGROUP BY tool\nORDER BY \"Avg Latency\" DESC",
           "refId": "A"
         }
       ],
@@ -1106,7 +1109,7 @@
             "uid": "${datasource}"
           },
           "format": 0,
-          "rawSql": "WITH tool_deltas AS (\n    SELECT\n        Attributes['tool_name'] as tool,\n        Attributes['client.id'] as client_id,\n        max(Count) - min(Count) as operations_in_window\n    FROM otel_metrics_histogram\n    WHERE\n        MetricName = 'mcp.tool.call.duration'\n        AND ServiceName = 'nexus-docker'\n        AND $__timeFilter(TimeUnix)\n    GROUP BY tool, client_id\n)\nSELECT\n    tool,\n    sum(operations_in_window) as \"Call Count\"\nFROM tool_deltas\nWHERE operations_in_window > 0 AND tool != ''\nGROUP BY tool\nORDER BY \"Call Count\" DESC",
+          "rawSql": "SELECT\n    Attributes['tool_name'] as tool,\n    sum(Count) as \"Call Count\"\nFROM otel.otel_metrics_histogram\nWHERE\n    MetricName = 'mcp.tool.call.duration'\n    AND ServiceName = 'nexus-docker'\n    AND $__timeFilter(TimeUnix)\n    AND Attributes['tool_name'] <> ''\nGROUP BY tool\nORDER BY \"Call Count\" DESC",
           "refId": "A"
         }
       ],
@@ -1198,7 +1201,7 @@
             "uid": "${datasource}"
           },
           "format": 0,
-          "rawSql": "WITH recent_changes AS (\n    SELECT\n        Attributes['client.id'] as client,\n        Attributes['gen_ai.request.model'] as model,\n        Count,\n        min(TimeUnix) as first_seen,\n        max(TimeUnix) as last_seen,\n        any(Sum) as sum_value\n    FROM otel_metrics_histogram\n    WHERE\n        MetricName = 'gen_ai.client.operation.duration'\n        AND ServiceName = 'nexus-docker'\n        AND TimeUnix > now() - interval 4 hours\n    GROUP BY client, model, Count\n),\nactivity_periods AS (\n    SELECT\n        toStartOfFiveMinutes(first_seen) as period,\n        client,\n        model,\n        Count,\n        sum_value,\n        first_seen\n    FROM recent_changes\n    WHERE first_seen > now() - interval 2 hours\n)\nSELECT\n    formatDateTime(period, '%Y-%m-%d %H:%i') as \"Time Period\",\n    model as \"Model\",\n    client as \"Client\",\n    count() as \"New Count Values\",\n    max(Count) - min(Count) as \"Request Increment\",\n    round(avg(sum_value/Count)) as \"Avg Latency (ms)\"\nFROM activity_periods\nGROUP BY period, model, client\nORDER BY period DESC, client, model\nLIMIT 20",
+          "rawSql": "WITH recent_changes AS (\n    SELECT\n        Attributes['client.id'] as client,\n        Attributes['gen_ai.request.model'] as model,\n        Count,\n        min(TimeUnix) as first_seen,\n        max(TimeUnix) as last_seen,\n        any(Sum) as sum_value\n    FROM otel.otel_metrics_histogram\n    WHERE\n        MetricName = 'gen_ai.client.operation.duration'\n        AND ServiceName = 'nexus-docker'\n        AND TimeUnix > now() - interval 4 hours\n    GROUP BY client, model, Count\n),\nactivity_periods AS (\n    SELECT\n        toStartOfFiveMinutes(first_seen) as period,\n        client,\n        model,\n        Count,\n        sum_value,\n        first_seen\n    FROM recent_changes\n    WHERE first_seen > now() - interval 2 hours\n)\nSELECT\n    formatDateTime(period, '%Y-%m-%d %H:%i') as \"Time Period\",\n    model as \"Model\",\n    client as \"Client\",\n    count() as \"New Count Values\",\n    max(Count) - min(Count) as \"Request Increment\",\n    round(avg(sum_value/Count)) as \"Avg Latency (ms)\"\nFROM activity_periods\nGROUP BY period, model, client\nORDER BY period DESC, client, model\nLIMIT 20",
           "refId": "A"
         }
       ],
