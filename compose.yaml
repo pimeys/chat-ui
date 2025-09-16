@@ -1,7 +1,7 @@
 services:
   # Nexus AI Router
   nexus:
-    image: nexus:google-fix
+    image: ghcr.io/grafbase/nexus:stable
     ports:
       - "8080:8000"
     environment:
